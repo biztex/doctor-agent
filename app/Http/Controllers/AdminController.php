@@ -122,13 +122,9 @@ class AdminController extends Controller
 
     public function consultationHistory(Request $request)
     {
-        // $query = \App\Models\ChatSession::with(['user', 'messages'])
-            // ->whereHas('messages', function($q) {
-            //     $q->where('role', 'assistant');
-            // });
+
         $query = \App\Models\ChatSession::with(['user', 'messages']);
-        // dd($query);
-        // Log::info("query: ", $query);
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('user', function($q) use ($search) {
@@ -142,8 +138,6 @@ class AdminController extends Controller
         }
 
         $sessions = $query->orderBy('created_at', 'desc')->paginate(10);
-        // $sessions = "Sfsf";
-        // $sessions = $query->get();
         return view('admin.consultation-history', compact('sessions'));
     }
 

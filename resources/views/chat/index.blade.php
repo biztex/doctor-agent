@@ -1,35 +1,41 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maritime Smart Care360 - AI Doctor Chat</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+@include('partials.head')
+@section('title', 'Maritime Smart Care360 - AI Doctor Chat')
+@push('head-styles')
+    <style>
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        height: 32px;
+        margin-left: 56px;
+    }
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        margin: 0 2px;
+        background: #3b82f6 !important;
+        border-radius: 50%;
+        display: inline-block;
+        animation: typing-bounce 1s infinite;
+        z-index: 1000;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing-bounce {
+        0%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-8px); }
+    }
+    </style>
+@endpush
 </head>
 <body class=" h-screen flex flex-col">
     @include('partials.header', ['title' => 'AI Doctor'])
 
     <!-- Chat Area -->
-    <div class="flex-1 overflow-hidden max-w-6xl mx-auto bg-white">
-        <div class="h-full flex flex-col">
+    <div class="flex-1 overflow-hidden max-w-6xl mx-auto bg-white w-full">
+        <div class="h-full flex flex-col mx-auto">
             <!-- Messages Container -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-8 space-y-4">
-                <!-- AI Doctor's initial message -->
-                <div class="flex items-start space-x-3">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <img src="{{ asset('images/aiDoctor.png') }}" alt="AI Doctor" style="border-radius: 50%;">
-                    </div>
-                    <div class="flex-1">
-                        <div class="bg-gray-100 rounded-lg p-3 max-w-xl">
-                            <p class="text-gray-800">
-                                こんにちは。私はAIドクターです。今日はどのような症状でお困りですか？症状について詳しく教えてください。
-                            </p>
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">21:55</div>
-                    </div>
-                </div>
+                <!-- AI Doctor's initial message will be injected by JS -->
             </div>
 
             <!-- Input Area -->
@@ -64,13 +70,13 @@
         <div class="bg-white rounded-lg shadow-lg max-w-lg w-full p-6" style="max-height: 500px; overflow-y: scroll;">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-900">診断結果</h2>
-                <button onclick="{{route('dashboard')}}" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                <button onclick="window.location.href='{{ route('dashboard') }}'" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             <div id="diagnosisModalContent">
                 <!-- Diagnosis results will be injected here -->
             </div>
             <div class="mt-6 flex justify-between">
-                <button onclick="{{route('dashboard')}}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">閉じる</button>
+                <button onclick="window.location.href='{{ route('dashboard') }}'" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">閉じる</button>
                 <button onclick="window.open('https://yokumiru.jp/', '_blank')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">外部サービスへ→</button>
             </div>
         </div>
@@ -92,28 +98,51 @@
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
-            // Add message to chat
-            function addMessage(content, isUser = false, timestamp = null) {
+            // Typing indicator functions
+            function showTypingIndicator() {
+                removeTypingIndicator();
+                const typingDiv = document.createElement('div');
+                typingDiv.id = 'typing-indicator';
+                typingDiv.className = 'flex items-start space-x-3 typing-indicator';
+                typingDiv.innerHTML = `
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <img src="{{ asset('images/ai-chatting-img.png') }}" alt="AI Doctor" style="border-radius: 50%; border: 3px solid gray;">
+                    </div>
+                    <div class="flex-1">
+                        <i class="fas fa-spinner fa-spin text-blue-600"></i>
+                    </div>
+                `;
+                document.getElementById('messages-container').appendChild(typingDiv);
+                scrollToBottom();
+            }
+
+            function removeTypingIndicator() {
+                const typingDiv = document.getElementById('typing-indicator');
+                if (typingDiv) typingDiv.remove();
+            }
+
+            // Add message to chat, with optional streaming effect
+            function addMessage(content, isUser = false, timestamp = null, stream = false, onStreamEnd = null) {
+                const messagesContainer = document.getElementById('messages-container');
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'flex items-start space-x-3';
-                
-                let messageContent = '';
 
+                // Flatten array content to a single string for streaming
+                let messageText = '';
                 if (Array.isArray(content)) {
-                    console.log("array");
-                    content.forEach(item => {
-                        messageContent += `<p>${item}</p>`;
-                    });
+                    messageText = content.join('\n');
                 } else {
-                    messageContent = `<p>${content}</p>`;
+                    messageText = content;
                 }
+
+                let messageContent = `<p class="ai-stream-text"></p>`;
 
                 if (isUser) {
                     messageDiv.innerHTML = `
                         <div class="flex-1"></div>
                         <div class="flex-1 max-w-3xl">
                             <div class="bg-blue-600 text-white rounded-lg p-3 ml-auto">
-                                ${messageContent}
+                                <p>${messageText}</p>
                             </div>
                             <div class="text-xs text-gray-500 mt-1 text-right">${timestamp || getCurrentTime()}</div>
                         </div>
@@ -121,22 +150,45 @@
                             <i class="fas fa-user text-gray-600 text-sm"></i>
                         </div>
                     `;
+                    messagesContainer.appendChild(messageDiv);
+                    scrollToBottom();
                 } else {
                     messageDiv.innerHTML = `
                         <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <img src="{{ asset('images/aiDoctor.png') }}" alt="AI Doctor" style="border-radius: 50%;">
+                            <img src="{{ asset('images/ai-chatting-img.png') }}" alt="AI Doctor" style="border-radius: 50%; border: 3px solid gray;">
                         </div>
                         <div class="flex-1">
-                            <div class="bg-gray-100 rounded-lg p-3 max-w-3xl">
-                                <p class="text-gray-800">${content}</p>
+                            <div class="bg-gray-100 rounded-lg p-3 max-w-xl">
+                                ${messageContent}
                             </div>
                             <div class="text-xs text-gray-500 mt-1">${timestamp || getCurrentTime()}</div>
                         </div>
                     `;
+                    messagesContainer.appendChild(messageDiv);
+                    scrollToBottom();
+
+                    if (stream) {
+                        // Simulate streaming effect, character by character
+                        const textElem = messageDiv.querySelector('.ai-stream-text');
+                        let i = 0;
+                        function streamChar() {
+                            if (i <= messageText.length) {
+                                textElem.innerHTML = messageText.slice(0, i).replace(/\n/g, '<br>');
+                                i++;
+                                scrollToBottom();
+                                setTimeout(streamChar, 18);
+                            } else if (typeof onStreamEnd === 'function') {
+                                onStreamEnd();
+                            }
+                        }
+                        streamChar();
+                    } else {
+                        messageDiv.querySelector('.ai-stream-text').innerHTML = messageText.replace(/\n/g, '<br>');
+                        if (typeof onStreamEnd === 'function') {
+                            onStreamEnd();
+                        }
+                    }
                 }
-                
-                messagesContainer.appendChild(messageDiv);
-                scrollToBottom();
             }
 
             // Get current time
@@ -157,6 +209,9 @@
                 // Add user message to chat
                 addMessage(message, true);
                 
+                // Show typing indicator
+                showTypingIndicator();
+                
                 console.log("sendMessage",document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
                 try {
                     const response = await fetch('/chat/send', {
@@ -172,6 +227,7 @@
                     });
 
                     const data = await response.json();
+                    removeTypingIndicator(); // Move here, before addMessage
                     console.log(data);
                     
                     if (data?.success) {
@@ -181,9 +237,9 @@
                         }
 
                         if (data.result.type === 'question') {
-                            addMessage(data.result.missing_questions, false);
+                            // Stream the AI's question response
+                            addMessage(data.result.missing_questions, false, null, true);
                         } else {
-                            console.log(data.result.diagnosis);
                             showDiagnosisModal(data.result);
                         }
                         
@@ -192,6 +248,7 @@
                         addMessage('申し訳ございませんが、エラーが発生しました。しばらく時間をおいて再度お試しください。', false);
                     }
                 } catch (error) {
+                    removeTypingIndicator();
                     console.error('Error:', error);
                     addMessage('通信エラーが発生しました。インターネット接続を確認してください。', false);
                 } finally {
@@ -222,6 +279,10 @@
 
             // Initial scroll to bottom
             scrollToBottom();
+
+            // Show initial AI message with streaming effect
+            const initialMessage = 'こんにちは。私はAIドクターです。今日はどのような症状でお困りですか？症状について詳しく教えてください。';
+            addMessage(initialMessage, false, null, true);
         });
 
         function showDiagnosisModal(result) {

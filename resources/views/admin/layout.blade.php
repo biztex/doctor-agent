@@ -1,12 +1,6 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', '管理者ダッシュボード') - Maritime Smart Care360</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+@include('partials.head')
+@section('title', '管理者ダッシュボード - Maritime Smart Care360')
+@push('head-styles')
     <style>
         /* Hide nav text when screen width ≤ 678px */
         @media (max-width: 678px) {
@@ -15,6 +9,7 @@
             }
         }
     </style>
+@endpush
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-white min-h-screen">
     @include('partials.header', ['title' => 'Maritime Smart Care360', 'isAdmin' => true])

@@ -67,9 +67,7 @@ class AuthController extends Controller
             'role' => 'user', // Default role for new registrations
         ]);
 
-        Auth::login($user);
-
-        return redirect('/dashboard');
+        return redirect('/login');
     }
 
     /**
