@@ -82,4 +82,43 @@ class AuthController extends Controller
 
         return redirect('/');
     }
+
+    /**
+     * Handle password change request
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => [
+                'required', 
+                'confirmed', 
+                'min:8',
+                'different:current_password'
+            ],
+        ], [
+            'new_password.min' => 'パスワードは最低8文字である必要があります。',
+            'new_password.different' => '新しいパスワードは現在のパスワードと異なる必要があります。',
+        ]);
+
+        $user = Auth::user();
+
+        // Check if current password is correct
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => '現在のパスワードが正しくありません。'
+            ], 422);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'パスワードが正常に変更されました。'
+        ]);
+    }
 } 

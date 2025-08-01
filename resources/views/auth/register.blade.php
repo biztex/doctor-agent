@@ -90,7 +90,6 @@
                 </a>
             </div>
         </div>
-        @include('auth.partials.demo-account')
     </div>
 @endsection
 
